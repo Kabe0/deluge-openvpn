@@ -1,0 +1,9 @@
+# Deluge OpenVPN Container
+
+
+WEB_PORT
+WEB_INTERFACE
+WEB_SSL
+
+TOR_PORT
+TOR_INTERFACE
