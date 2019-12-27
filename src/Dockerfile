@@ -13,8 +13,6 @@ ENV VPN_ENABLE=true
 ENV VPN_CONFIG="/config/config.ovpn"
 ENV VPN_AUTH="/config/auth.conf"
 
-#ENV WEB_SSL=false
-
 # add repo and install qbitorrent
 RUN \
  echo "***** add qbitorrent repositories ****" && \
@@ -24,7 +22,8 @@ RUN \
  LC_ALL=C.UTF-8 add-apt-repository -y ppa:deadsnakes/ppa && \
  apt-get update && \
  apt-get install -y \
-	python3 python3-pip ufw openvpn deluged deluge-web deluge-console nano dnsutils iputils-ping lsof && \
+	python3 python3-pip ufw openvpn deluged deluge-web deluge-console && \
+	# Dev tools nano dnsutils iputils-ping lsof
  echo "**** cleanup ****" && \
  apt-get clean && \
  python3 -m pip install netifaces netaddr pyufw psutil && \
