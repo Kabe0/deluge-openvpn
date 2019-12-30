@@ -6,6 +6,7 @@ if not os.path.exists("~/.config/deluge"):
 
 DEL_UID = os.getenv("DEL_UID", 1000)
 DEL_GID = os.getenv("DEL_GID", 1000)
+DEL_PORT = os.getenv("DEL_PORT", 58846)
 
 if DEL_UID != 1000:
     subprocess.run(["/usr/sbin/usermod", "-u", f"{DEL_UID}", "deluge"])
@@ -20,4 +21,4 @@ if webPort:
     webCmd.append(webPort)
 
 subprocess.Popen(webCmd)
-subprocess.Popen(["su", "deluge", "-c", "/usr/bin/deluged"])
+subprocess.Popen(["su", "deluge", "-c", "/usr/bin/deluged", "-p", f"{DEL_PORT}"])
