@@ -1,12 +1,15 @@
 import subprocess
 import os
 
-webComd = ["/usr/bin/deluge-web"]
+if not os.path.exists("~/.config/deluge"):
+    os.makedirs("~/.config/deluge")
+
+webCmd = ["su", "deluge", "-c", "/usr/bin/deluge-web"]
 webPort = os.getenv("WEB_PORT", None)
 
 if webPort:
-    webComd.append("-p")
-    webComd.append(webPort)
+    webCmd.append("-p")
+    webCmd.append(webPort)
 
-subprocess.Popen(webComd)
-subprocess.Popen(["/usr/bin/deluged"])
+subprocess.Popen(webCmd)
+subprocess.Popen(["su", "deluge", "-c", "/usr/bin/deluged"])

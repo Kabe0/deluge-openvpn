@@ -10,10 +10,26 @@ import pprint
 # Based on the following documentation
 # https://www.linode.com/docs/networking/vpn/vpn-firewall-killswitch-for-linux-and-macos-clients/
 
+# iptables --flush
+# iptables --delete-chain
+# iptables -t nat --flush
+# iptables -t nat --delete-chain
+# iptables -P OUTPUT DROP
+# iptables -A INPUT -j ACCEPT -i lo
+# iptables -A OUTPUT -j ACCEPT -o lo
+# iptables -A INPUT --src 192.168.0.0/24 -j ACCEPT -i wlp6s0
+# iptables -A OUTPUT -d 192.168.0.0/24 -j ACCEPT -o wlp6s0
+# iptables -A OUTPUT -j ACCEPT -d 198.51.100.0 -o wlp6s0 -p udp -m udp --dport 1194
+# iptables -A INPUT -j ACCEPT -s 198.51.100.0 -i wlp6s0 -p udp -m udp --sport 1194
+# iptables -A INPUT -j ACCEPT -i tun0
+# iptables -A OUTPUT -j ACCEPT -o tun0
+
+UseUFW = bool(os.getenv('USE_UFW', False))
+
 # Used for some of the print outputs
 pp = pprint.PrettyPrinter(indent=4)
 
-dnss = os.getenv('DNS', '8.8.8.8,8.8.4.4').split(",")
+dnss = os.getenv('VPN_DNS', '8.8.8.8,8.8.4.4').split(",")
 
 addrs = netifaces.ifaddresses('eth0')
 ipinfo = addrs[socket.AF_INET][0]
@@ -35,10 +51,7 @@ for line in open('/config/config.ovpn'):
         break
 
 # Configure the UFW default details
-pyufw.reset(True)
-pyufw.default("deny", "deny", "allow")
-pyufw.add("allow in on tun0")
-pyufw.add("allow out on tun0")
+
 
 # Set the DNS configs
 with open("/etc/resolv.conf", "w") as myfile:
@@ -47,23 +60,55 @@ with open("/etc/resolv.conf", "w") as myfile:
         myfile.write(f"nameserver {dns}\n")
     myfile.close()
 
-# Assign the docker cidr to the firewall
-pyufw.add(f"allow in to {dockeraddress.cidr}")
-pyufw.add(f"allow out to {dockeraddress.cidr}")
-
 print(vpnname)
 # Grab all the domain ip addresses
 result = socket.getaddrinfo(vpnname, None, socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME)
 list = [x[4][0] for x in result]
 
+if UseUFW:
+    pyufw.reset(True)
+    pyufw.default("deny", "deny", "allow")
+    pyufw.add("allow in on tun0")
+    pyufw.add("allow out on tun0")
+
+    # Assign the docker cidr to the firewall
+    pyufw.add(f"allow in on eth0 from {dockeraddress.cidr}")
+    pyufw.add(f"allow out on eth0 to {dockeraddress.cidr}")
+else:
+    subprocess.run(["/sbin/iptables", "--flush"])
+    subprocess.run(["/sbin/iptables", "--delete-chain"])
+    subprocess.run(["/sbin/iptables", "-t", "nat", "--flush"])
+    subprocess.run(["/sbin/iptables", "-t", "nat", "--delete-chain"])
+    subprocess.run(["/sbin/iptables", "-P", "OUTPUT", "DROP"])
+    subprocess.run(["/sbin/iptables", "-A", "INPUT", "-j", "ACCEPT", "-i", "lo"])
+    subprocess.run(["/sbin/iptables", "-A", "OUTPUT", "-j", "ACCEPT", "-o", "lo"])
+
+    # Assign the docker cidr to the firewall
+    subprocess.run(["/sbin/iptables", "-A", "INPUT", "--src", f"{dockeraddress.cidr}", "-j", "ACCEPT", "-i", "eth0"])
+    subprocess.run(["/sbin/iptables", "-A", "OUTPUT", "-d", f"{dockeraddress.cidr}", "-j", "ACCEPT", "-o", "eth0"])
+
 # Assign each IP to the UFW firewall list
 for vpnip in list:
-    pyufw.add(f"allow out on eth0 to {vpnip} port {vpnport}")
-    pyufw.add(f"allow in on eth0 from {vpnip} port {vpnport}")
+
+    if UseUFW:
+        pyufw.add(f"allow out on eth0 to {vpnip} port {vpnport}")
+        pyufw.add(f"allow in on eth0 from {vpnip} port {vpnport}")
+    else:
+        subprocess.run(
+            ["/sbin/iptables", "-A", "OUTPUT", "-j", "ACCEPT", "-d", f"{vpnip}", "-o", "eth0", "-p", "udp", "-m",
+             "udp", "--dport", f"{vpnport}"])
+        subprocess.run(
+            ["/sbin/iptables", "-A", "INPUT", "-j", "ACCEPT", "-s", f"{vpnip}", "-i", "eth0", "-p", "udp", "-m",
+             "udp", "--sport", f"{vpnport}"])
+
 
 # Turn on the firewall
-pyufw.enable()
-pp.pprint(pyufw.status())
+if UseUFW:
+    pyufw.enable()
+    pp.pprint(pyufw.status())
+else:
+    subprocess.run(["/sbin/iptables", "-A", "INPUT", "-j", "ACCEPT", "-i", "tun0"])
+    subprocess.run(["/sbin/iptables", "-A", "OUTPUT", "-j", "ACCEPT", "-o", "tun0"])
 
 # Run the processes
 subprocess.Popen(["/usr/bin/python3", "/usr/bin/run.py"])
