@@ -41,7 +41,10 @@ the OpenVPN service has enough permissions to change the network configuration f
 | ---- | ------- | ----------- |
 | DNS | 8.8.8.8,8.8.4.4 | A comma separated string list that contains all the DNS ports that should be used by the container. |
 | WEB_PORT | 8112 | The port used by the deluge-web for displaying the html content. |
-| VPN_ENABLE | true | Can be used to disable the VPN component (which is useful when debugging) |
+| DEL_UID | 1000 | The ID used for the main deluge user account. Changing this value could break the config folder. |
+| DEL_GID | 1000 | The ID used for the main deluge group account. Changing this value could break the config folder. |
+| VPN_ENABLE | True | Can be used to disable the VPN component (which is useful when debugging) |
 | VPN_CONFIG | /config/config.ovpn | The path for the config.ovpn that should be loaded. |
 | VPN_AUTH | /config/auth.conf | The path for the auth.conf which should store the username and password. If the file is not found, the application will still try to connect to the VPN server. |
+| USE_UFW | False | Toggle UFW or iptables. Note that UFW may not work on NAS based Unix systems. |
 | HOME | /config | The path to the home directory.|
