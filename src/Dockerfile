@@ -40,5 +40,6 @@ RUN \
 EXPOSE 8112 6881/udp
 VOLUME /config /downloads
 COPY init.py up.sh up.py run.py /usr/bin/
+COPY ufw.conf /etc/ufw/
 
 CMD /usr/bin/python3 /usr/bin/init.py
